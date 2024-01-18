@@ -1,31 +1,28 @@
 import routeHandler from "@/lib/routeHandler";
 import prisma from "@/lib/prisma";
-import Question from "@/schemas/Question";
+import Answer from "@/schemas/Answer";
 
 export const GET = routeHandler(async (request, context) => {
-  const { surveyId } = context.params;
-  const questions = await prisma.question.findMany({
+  const { questionId } = context.params;
+  const answers = await prisma.questionAnswer.findMany({
     where: {
-      surveyId: surveyId,
+      questionId,
     },
   });
 
-  return questions;
+  return answers;
 });
 
 export const POST = routeHandler(async (request, context) => {
-  const { surveyId } = context.params;
+  const { surveyId, questionId } = context.params;
   const survey = await prisma.survey.findUniqueOrThrow({
     where: {
       id: surveyId,
-    },
-    include: {
-      questions: true,
-    },
+    }
   });
 
   const body = await request.json();
-  const validation = await Question.safeParseAsync(body);
+  const validation = await Answer.safeParseAsync(body);
 
   if (!validation.success) {
     throw validation.error;
@@ -38,14 +35,26 @@ export const POST = routeHandler(async (request, context) => {
     },
     data: {
       questions: {
-        create: {
-          position: survey.questions.length + 1,
-          ...data,
+        update: {
+          where: {
+            id: questionId
+          },
+          data: {
+            answers: {
+              create: {
+                ...data
+              }
+            }
+          }
         },
       },
     },
     include: {
-      questions: true,
+      questions: {
+        include: {
+          answers: true,
+        },
+      },
     },
   });
 
